@@ -3,7 +3,7 @@ import logging
 from coursework_data import download_pet_dataset
 
 
-def main() -> None:
+def main():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(message)s",
