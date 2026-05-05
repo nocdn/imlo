@@ -6,7 +6,10 @@ from torch.utils.data import DataLoader
 
 from coursework_data import load_pet_split
 from model import create_pet_breed_model
-from transforms import build_evaluation_image_transforms, build_training_image_transforms
+from transforms import (
+    build_evaluation_image_transforms,
+    build_training_image_transforms,
+)
 
 BATCH_SIZE = 32
 NUMBER_OF_EPOCHS = 10
@@ -135,9 +138,8 @@ def main():
     model = create_pet_breed_model()
     model = model.to(device)
 
-    # cross entropy is used for multi-class classification
     loss_function = nn.CrossEntropyLoss()
-    optimiser = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     for epoch_number in range(NUMBER_OF_EPOCHS):
         print("Epoch", epoch_number + 1, "of", NUMBER_OF_EPOCHS)
