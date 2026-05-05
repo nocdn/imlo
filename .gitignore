@@ -4,3 +4,4 @@ data/
 *.pth
 .venv/
 model.pth
+train.log

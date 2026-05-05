@@ -1,8 +1,9 @@
 from pathlib import Path
+import os
 
 from torchvision.datasets import OxfordIIITPet
 
-DATA_DIR = Path("data")
+DATA_DIR = Path(os.environ.get("IMLO_DATA_DIR", "data"))
 
 
 def load_pet_split(split, download=True, transform=None):

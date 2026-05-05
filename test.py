@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+import time
 
 import torch
 from torch import nn
@@ -8,54 +10,40 @@ from coursework_data import load_pet_split
 from model import create_pet_breed_model
 from transforms import build_evaluation_image_transforms
 
-BATCH_SIZE = 32
-MODEL_FILE_NAME = "model.pth"
+BATCH_SIZE = int(os.environ.get("IMLO_BATCH_SIZE", "64"))
+MODEL_FILE_NAME = os.environ.get("IMLO_MODEL_FILE", "model.pth")
+NUMBER_OF_DATA_WORKERS = int(os.environ.get("IMLO_NUM_WORKERS", "4"))
 
 
 def choose_testing_device():
-    # use a gpu if one is available
     if torch.cuda.is_available():
         return "cuda"
-
     if torch.backends.mps.is_available():
         return "mps"
-
     return "cpu"
 
 
-def test_model_on_dataset(dataloader, model, loss_function, device):
+def evaluate_test_set(dataloader, model, loss_fn, device):
+    """evaluate the model on the official test images without augmentation."""
     model.eval()
-
-    # keep totals so the final test accuracy can be printed
     total_loss = 0
-    total_correct_predictions = 0
+    total_correct = 0
     total_images = 0
 
-    # gradients are not needed when testing the model
     with torch.no_grad():
         for images, labels in dataloader:
-            # move the batch to the same device as the model
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
-            # get the model predictions and compare them with the real labels
-            prediction_scores = model(images)
-            loss = loss_function(prediction_scores, labels)
+            scores = model(images)
+            loss = loss_fn(scores, labels)
 
-            batch_size = images.shape[0]
-            # choose the class with the highest score
-            predicted_labels = prediction_scores.argmax(1)
+            bsz = images.shape[0]
+            total_loss += loss.item() * bsz
+            total_correct += (scores.argmax(1) == labels).sum().item()
+            total_images += bsz
 
-            total_loss = total_loss + loss.item() * batch_size
-            total_correct_predictions = (
-                total_correct_predictions + (predicted_labels == labels).sum().item()
-            )
-            total_images = total_images + batch_size
-
-    average_loss = total_loss / total_images
-    test_accuracy = total_correct_predictions / total_images
-
-    return average_loss, test_accuracy
+    return total_loss / total_images, total_correct / total_images
 
 
 def main():
@@ -63,38 +51,35 @@ def main():
         raise FileNotFoundError("Run train.py first so that model.pth exists.")
 
     device = choose_testing_device()
-    print("Using device:", device)
+    print("device:", device)
 
     test_dataset = load_pet_split(
-        "test",
-        download=True,
-        transform=build_evaluation_image_transforms(),
+        "test", download=True, transform=build_evaluation_image_transforms()
     )
-
     test_dataloader = DataLoader(
-        test_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=False,
+        test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUMBER_OF_DATA_WORKERS,
     )
 
-    model = create_pet_breed_model()
-    model = model.to(device)
+    model = create_pet_breed_model().to(device)
+    weights = torch.load(MODEL_FILE_NAME, map_location=device, weights_only=True)
+    model.load_state_dict(weights)
 
-    # load the saved weights from train.py
-    saved_weights = torch.load(MODEL_FILE_NAME, map_location=device, weights_only=True)
-    model.load_state_dict(saved_weights)
+    loss_fn = nn.CrossEntropyLoss()
 
-    loss_function = nn.CrossEntropyLoss()
+    t0 = time.time()
+    avg_loss, accuracy = evaluate_test_set(test_dataloader, model, loss_fn, device)
+    elapsed = time.time() - t0
 
-    average_loss, test_accuracy = test_model_on_dataset(
-        test_dataloader,
-        model,
-        loss_function,
-        device,
-    )
+    print(f"Average test loss: {avg_loss:.4f}")
+    print(f"Test accuracy: {accuracy * 100:.2f} %")
+    print(f"Total testing time: {elapsed:.2f} seconds")
 
-    print("Average test loss:", round(average_loss, 4))
-    print("Test accuracy:", round(test_accuracy * 100, 2), "%")
+    return {
+        "test_loss": avg_loss,
+        "test_accuracy": accuracy,
+        "testing_seconds": elapsed,
+        "model_file": MODEL_FILE_NAME,
+    }
 
 
 if __name__ == "__main__":

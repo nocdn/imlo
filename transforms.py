@@ -1,31 +1,23 @@
 from torchvision import transforms
 
 
-IMAGE_SIZE = 160
-NORMALIZE_MEAN = (0.5, 0.5, 0.5)
-NORMALIZE_STD = (0.5, 0.5, 0.5)
+IMAGE_SIZE = 128
 
 
 def build_training_image_transforms():
-    """make training images ready for the model"""
+    """make training images ready for the model with moderate augmentation"""
     return transforms.Compose(
         [
-            transforms.Resize((200, 200)),
+            transforms.Resize((148, 148)),
             transforms.RandomResizedCrop(
                 IMAGE_SIZE,
-                scale=(0.65, 1.0),
-                ratio=(0.8, 1.25),
+                scale=(0.7, 1.0),
+                ratio=(0.85, 1.18),
             ),
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(degrees=12),
-            transforms.ColorJitter(
-                brightness=0.25,
-                contrast=0.25,
-                saturation=0.25,
-                hue=0.03,
-            ),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
             transforms.ToTensor(),
-            transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD),
+            transforms.RandomErasing(p=0.2, scale=(0.02, 0.15)),
         ]
     )
 
@@ -34,9 +26,8 @@ def build_evaluation_image_transforms():
     """make evaluation images ready for the model"""
     return transforms.Compose(
         [
-            transforms.Resize((180, 180)),
+            transforms.Resize((146, 146)),
             transforms.CenterCrop(IMAGE_SIZE),
             transforms.ToTensor(),
-            transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD),
         ]
     )

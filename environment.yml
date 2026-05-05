@@ -6,6 +6,7 @@ dependencies:
   - pip
   - pip:
       - matplotlib
+      - modal
       - numpy
       - pillow
       - pandas
