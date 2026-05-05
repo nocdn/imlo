@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 
 from coursework_data import load_pet_split
 from model import create_pet_breed_model
-from transforms import build_training_image_transforms
+from transforms import build_evaluation_image_transforms, build_training_image_transforms
 
 BATCH_SIZE = 32
 NUMBER_OF_EPOCHS = 1
@@ -64,6 +64,41 @@ def train_model_for_one_epoch(dataloader, model, loss_function, optimiser, devic
     return average_loss, training_accuracy
 
 
+def evaluate_model_on_trainval_split(dataloader, model, loss_function, device):
+    model.eval()
+
+    # keep totals so the final trainval accuracy can be printed
+    total_loss = 0
+    total_correct_predictions = 0
+    total_images = 0
+
+    # gradients are not needed when checking accuracy
+    with torch.no_grad():
+        for images, labels in dataloader:
+            # move the batch to the same device as the model
+            images = images.to(device)
+            labels = labels.to(device)
+
+            # get the model predictions and compare them with the real labels
+            prediction_scores = model(images)
+            loss = loss_function(prediction_scores, labels)
+
+            batch_size = images.shape[0]
+            # choose the class with the highest score
+            predicted_labels = prediction_scores.argmax(1)
+
+            total_loss = total_loss + loss.item() * batch_size
+            total_correct_predictions = (
+                total_correct_predictions + (predicted_labels == labels).sum().item()
+            )
+            total_images = total_images + batch_size
+
+    average_loss = total_loss / total_images
+    trainval_accuracy = total_correct_predictions / total_images
+
+    return average_loss, trainval_accuracy
+
+
 def main():
     # use the same random seed each time this script starts
     torch.manual_seed(0)
@@ -81,6 +116,18 @@ def main():
         training_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
+    )
+
+    trainval_evaluation_dataset = load_pet_split(
+        "trainval",
+        download=True,
+        transform=build_evaluation_image_transforms(),
+    )
+
+    trainval_evaluation_dataloader = DataLoader(
+        trainval_evaluation_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
     )
 
     model = create_pet_breed_model()
@@ -104,7 +151,17 @@ def main():
         print("Average training loss:", round(average_loss, 4))
         print("Training accuracy:", round(training_accuracy * 100, 2), "%")
 
-    # save only the learned weights, not the whole model object
+    final_trainval_loss, final_trainval_accuracy = evaluate_model_on_trainval_split(
+        trainval_evaluation_dataloader,
+        model,
+        loss_function,
+        device,
+    )
+
+    print("Final trainval loss:", round(final_trainval_loss, 4))
+    print("Final trainval accuracy:", round(final_trainval_accuracy * 100, 2), "%")
+
+    # save only the learnt weights, not the whole model object
     torch.save(model.state_dict(), MODEL_FILE_NAME)
     print("Saved model to", MODEL_FILE_NAME)
 

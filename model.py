@@ -21,12 +21,15 @@ class PetBreedConvolutionalNetwork(nn.Module):
             nn.Conv2d(32, 64, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),
         )
 
         # these layers turn the image features into class scores
         self.classifier_layers = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(64 * 20 * 20, 128),
+            nn.Linear(64 * 10 * 10, 128),
             nn.ReLU(),
             nn.Linear(128, NUMBER_OF_CLASSES),
         )
