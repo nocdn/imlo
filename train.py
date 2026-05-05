@@ -12,7 +12,7 @@ from transforms import (
 )
 
 BATCH_SIZE = 32
-NUMBER_OF_EPOCHS = 10
+NUMBER_OF_EPOCHS = 30
 LEARNING_RATE = 0.001
 MODEL_FILE_NAME = "model.pth"
 
@@ -36,7 +36,7 @@ def train_model_for_one_epoch(dataloader, model, loss_function, optimiser, devic
     total_correct_predictions = 0
     total_images = 0
 
-    for batch_number, (images, labels) in enumerate(dataloader):
+    for images, labels in dataloader:
         # move the batch to the same device as the model
         images = images.to(device)
         labels = labels.to(device)
@@ -59,9 +59,6 @@ def train_model_for_one_epoch(dataloader, model, loss_function, optimiser, devic
             total_correct_predictions + (predicted_labels == labels).sum().item()
         )
         total_images = total_images + batch_size
-
-        if batch_number % 20 == 0:
-            print("Batch", batch_number, "loss:", round(loss.item(), 4))
 
     average_loss = total_loss / total_images
     training_accuracy = total_correct_predictions / total_images
@@ -142,8 +139,6 @@ def main():
     optimiser = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     for epoch_number in range(NUMBER_OF_EPOCHS):
-        print("Epoch", epoch_number + 1, "of", NUMBER_OF_EPOCHS)
-
         # record how long this epoch takes
         epoch_start_time = time.time()
 
@@ -158,9 +153,20 @@ def main():
         epoch_end_time = time.time()
         epoch_duration_seconds = epoch_end_time - epoch_start_time
 
-        print("Average training loss:", round(average_loss, 4))
-        print("Training accuracy:", round(training_accuracy * 100, 2), "%")
-        print("Epoch time:", round(epoch_duration_seconds, 2), "seconds")
+        print(
+            "Epoch",
+            epoch_number + 1,
+            "of",
+            NUMBER_OF_EPOCHS,
+            "- loss:",
+            round(average_loss, 4),
+            "- accuracy:",
+            round(training_accuracy * 100, 2),
+            "%",
+            "- time:",
+            round(epoch_duration_seconds, 2),
+            "seconds",
+        )
 
     final_trainval_loss, final_trainval_accuracy = evaluate_model_on_trainval_split(
         trainval_evaluation_dataloader,

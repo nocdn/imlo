@@ -10,17 +10,19 @@ def build_training_image_transforms():
     """make training images ready for the model"""
     return transforms.Compose(
         [
-            transforms.Resize((180, 180)),
+            transforms.Resize((200, 200)),
             transforms.RandomResizedCrop(
                 IMAGE_SIZE,
-                scale=(0.75, 1.0),
-                ratio=(0.85, 1.15),
+                scale=(0.65, 1.0),
+                ratio=(0.8, 1.25),
             ),
             transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=12),
             transforms.ColorJitter(
-                brightness=0.15,
-                contrast=0.15,
-                saturation=0.15,
+                brightness=0.25,
+                contrast=0.25,
+                saturation=0.25,
+                hue=0.03,
             ),
             transforms.ToTensor(),
             transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD),
