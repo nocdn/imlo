@@ -1,3 +1,5 @@
+import time
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -7,7 +9,7 @@ from model import create_pet_breed_model
 from transforms import build_evaluation_image_transforms, build_training_image_transforms
 
 BATCH_SIZE = 32
-NUMBER_OF_EPOCHS = 1
+NUMBER_OF_EPOCHS = 10
 LEARNING_RATE = 0.001
 MODEL_FILE_NAME = "model.pth"
 
@@ -140,6 +142,9 @@ def main():
     for epoch_number in range(NUMBER_OF_EPOCHS):
         print("Epoch", epoch_number + 1, "of", NUMBER_OF_EPOCHS)
 
+        # record how long this epoch takes
+        epoch_start_time = time.time()
+
         average_loss, training_accuracy = train_model_for_one_epoch(
             training_dataloader,
             model,
@@ -148,8 +153,12 @@ def main():
             device,
         )
 
+        epoch_end_time = time.time()
+        epoch_duration_seconds = epoch_end_time - epoch_start_time
+
         print("Average training loss:", round(average_loss, 4))
         print("Training accuracy:", round(training_accuracy * 100, 2), "%")
+        print("Epoch time:", round(epoch_duration_seconds, 2), "seconds")
 
     final_trainval_loss, final_trainval_accuracy = evaluate_model_on_trainval_split(
         trainval_evaluation_dataloader,
