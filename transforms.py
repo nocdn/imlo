@@ -6,8 +6,8 @@ NORMALIZE_MEAN = (0.5, 0.5, 0.5)
 NORMALIZE_STD = (0.5, 0.5, 0.5)
 
 
-def build_train_transforms():
-    """Basic augmentation for training images."""
+def build_training_image_transforms():
+    """make training images ready for the model"""
     return transforms.Compose(
         [
             transforms.Resize((180, 180)),
@@ -28,8 +28,8 @@ def build_train_transforms():
     )
 
 
-def build_eval_transforms():
-    """Deterministic preprocessing for validation/test images."""
+def build_evaluation_image_transforms():
+    """make evaluation images ready for the model"""
     return transforms.Compose(
         [
             transforms.Resize((180, 180)),
