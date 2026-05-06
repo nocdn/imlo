@@ -4,6 +4,7 @@ from torch.nn import functional as F
 
 NUMBER_OF_CLASSES = 37
 INPUT_IMAGE_SIZE = 128
+INPUT_CHANNELS = 4
 
 
 class ResidualBlock(nn.Module):
@@ -51,19 +52,17 @@ class ResidualBlock(nn.Module):
 
 
 class PetBreedConvolutionalNetwork(nn.Module):
-    """compact residual cnn for the oxford-iiit pet dataset"""
+    """residual cnn for the oxford-iiit pet dataset"""
 
     def __init__(self):
         super().__init__()
 
-        # stem: 3x3 conv (no early downsample) so small images keep enough size
         self.stem = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(INPUT_CHANNELS, 32, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
         )
 
-        # four stages (2 blocks each), width 32 -> 64 -> 128 -> 256 -> 384
         self.stage_one = nn.Sequential(
             ResidualBlock(32, 64, stride=2),
             ResidualBlock(64, 64, stride=1),
@@ -118,7 +117,7 @@ def create_pet_breed_model():
 
 def check_model_output_shape():
     model = create_pet_breed_model()
-    example_images = torch.randn(4, 3, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
+    example_images = torch.randn(4, INPUT_CHANNELS, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
     output_scores = model(example_images)
     total_params = sum(p.numel() for p in model.parameters())
     print("Output shape:", output_scores.shape, "Params:", total_params)

@@ -31,6 +31,8 @@ def train_and_test_on_modal():
     os.environ["IMLO_DATA_DIR"] = str(REMOTE_DATA_DIR)
     os.environ["IMLO_MODEL_FILE"] = str(REMOTE_MODEL_FILE)
     os.environ["IMLO_NUM_WORKERS"] = "4"
+    os.environ["IMLO_USE_VALIDATION_SPLIT"] = "0"
+    os.environ["IMLO_USE_TRIMAP_INPUT"] = "1"
 
     import torch
 
