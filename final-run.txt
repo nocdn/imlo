@@ -1,0 +1,73 @@
+bartosz@sprinkler imlo % .venv/bin/python train.py
+device: mps
+train images: 3680 val images: 0
+model params: 7740645
+  e1/30 b57/115 acc 6.6%
+E01/30 loss 3.379 acc 9.1% | 108.9s
+  e2/30 b57/115 acc 10.0%
+E02/30 loss 3.299 acc 10.3% | 102.1s
+  e3/30 b57/115 acc 11.5%
+E03/30 loss 3.236 acc 11.7% | 106.0s
+  e4/30 b57/115 acc 11.7%
+E04/30 loss 3.179 acc 13.0% | 109.4s
+  e5/30 b57/115 acc 16.0%
+E05/30 loss 3.046 acc 16.1% | 108.4s
+  e6/30 b57/115 acc 19.9%
+E06/30 loss 2.905 acc 19.4% | 107.9s
+  e7/30 b57/115 acc 23.4%
+E07/30 loss 2.788 acc 23.1% | 109.4s
+  e8/30 b57/115 acc 25.7%
+E08/30 loss 2.694 acc 25.7% | 108.8s
+  e9/30 b57/115 acc 28.5%
+E09/30 loss 2.593 acc 27.9% | 108.2s
+  e10/30 b57/115 acc 29.8%
+E10/30 loss 2.483 acc 30.7% | 107.9s
+  e11/30 b57/115 acc 33.9%
+E11/30 loss 2.395 acc 33.5% | 109.6s
+  e12/30 b57/115 acc 37.7%
+E12/30 loss 2.291 acc 37.1% | 107.4s
+  e13/30 b57/115 acc 39.2%
+E13/30 loss 2.207 acc 38.8% | 107.7s
+  e14/30 b57/115 acc 43.6%
+E14/30 loss 2.077 acc 42.6% | 107.4s
+  e15/30 b57/115 acc 44.9%
+E15/30 loss 2.000 acc 46.1% | 107.4s
+  e16/30 b57/115 acc 48.2%
+E16/30 loss 1.902 acc 48.9% | 107.2s
+  e17/30 b57/115 acc 52.1%
+E17/30 loss 1.822 acc 51.5% | 106.9s
+  e18/30 b57/115 acc 56.0%
+E18/30 loss 1.707 acc 55.9% | 107.0s
+  e19/30 b57/115 acc 56.1%
+E19/30 loss 1.673 acc 56.6% | 107.0s
+  e20/30 b57/115 acc 57.0%
+E20/30 loss 1.582 acc 58.5% | 107.2s
+  e21/30 b57/115 acc 62.8%
+E21/30 loss 1.495 acc 62.7% | 107.2s
+  e22/30 b57/115 acc 65.7%
+E22/30 loss 1.443 acc 65.4% | 247.7s
+  e23/30 b57/115 acc 68.1%
+E23/30 loss 1.380 acc 67.7% | 100.8s
+  e24/30 b57/115 acc 70.6%
+E24/30 loss 1.330 acc 69.6% | 571.2s
+  e25/30 b57/115 acc 72.3%
+E25/30 loss 1.282 acc 72.1% | 101.9s
+  e26/30 b57/115 acc 71.8%
+E26/30 loss 1.246 acc 72.9% | 101.8s
+  e27/30 b57/115 acc 73.2%
+E27/30 loss 1.223 acc 73.6% | 102.5s
+  e28/30 b57/115 acc 74.1%
+E28/30 loss 1.208 acc 74.1% | 105.2s
+  e29/30 b57/115 acc 76.8%
+E29/30 loss 1.172 acc 76.6% | 106.5s
+  e30/30 b57/115 acc 77.0%
+E30/30 loss 1.158 acc 76.6% | 107.6s
+final trainval loss: 1.0616
+final trainval accuracy: 80.84 %
+total training time: 3804.4s
+saved model to model.pth
+bartosz@sprinkler imlo % .venv/bin/python test.py
+device: mps
+Average test loss: 1.2497
+Test accuracy: 61.87 %
+Total testing time: 49.32 seconds
