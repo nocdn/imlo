@@ -2,9 +2,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-NUMBER_OF_CLASSES = 37
-INPUT_IMAGE_SIZE = 128
-INPUT_CHANNELS = 4
+number_of_classes = 37
+input_image_size = 192
+input_channels = 4
 
 
 class ResidualBlock(nn.Module):
@@ -58,7 +58,9 @@ class PetBreedConvolutionalNetwork(nn.Module):
         super().__init__()
 
         self.stem = nn.Sequential(
-            nn.Conv2d(INPUT_CHANNELS, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(
+                input_channels, 32, kernel_size=3, stride=1, padding=1, bias=False
+            ),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
         )
@@ -82,8 +84,7 @@ class PetBreedConvolutionalNetwork(nn.Module):
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.dropout = nn.Dropout(p=0.3)
-        self.classifier = nn.Linear(384, NUMBER_OF_CLASSES)
-
+        self.classifier = nn.Linear(384, number_of_classes)
         self._initialise_weights()
 
     def _initialise_weights(self):
@@ -113,15 +114,3 @@ class PetBreedConvolutionalNetwork(nn.Module):
 
 def create_pet_breed_model():
     return PetBreedConvolutionalNetwork()
-
-
-def check_model_output_shape():
-    model = create_pet_breed_model()
-    example_images = torch.randn(4, INPUT_CHANNELS, INPUT_IMAGE_SIZE, INPUT_IMAGE_SIZE)
-    output_scores = model(example_images)
-    total_params = sum(p.numel() for p in model.parameters())
-    print("Output shape:", output_scores.shape, "Params:", total_params)
-
-
-if __name__ == "__main__":
-    check_model_output_shape()

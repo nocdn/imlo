@@ -6,7 +6,7 @@ from torchvision.transforms import InterpolationMode
 from torchvision.transforms import functional as TF
 
 
-IMAGE_SIZE = 128
+image_size = 192
 
 
 def _trimap_to_pet_channel(trimap_tensor):
@@ -26,10 +26,10 @@ class TrainingImageTransforms:
 
     def __call__(self, image, trimap=None):
         if trimap is None:
-            image = transforms.Resize((148, 148))(image)
+            image = transforms.Resize((224, 224))(image)
             image = transforms.RandomResizedCrop(
-                IMAGE_SIZE,
-                scale=(0.7, 1.0),
+                image_size,
+                scale=(0.78, 1.0),
                 ratio=(0.85, 1.18),
             )(image)
             image = transforms.RandomHorizontalFlip(p=0.5)(image)
@@ -37,16 +37,16 @@ class TrainingImageTransforms:
             image = TF.to_tensor(image)
             return self.erase(image)
 
-        image = TF.resize(image, (148, 148), interpolation=InterpolationMode.BILINEAR)
-        trimap = TF.resize(trimap, (148, 148), interpolation=InterpolationMode.NEAREST)
+        image = TF.resize(image, (224, 224), interpolation=InterpolationMode.BILINEAR)
+        trimap = TF.resize(trimap, (224, 224), interpolation=InterpolationMode.NEAREST)
 
         i, j, h, w = transforms.RandomResizedCrop.get_params(
             image,
-            scale=(0.7, 1.0),
+            scale=(0.78, 1.0),
             ratio=(0.85, 1.18),
         )
-        image = TF.resized_crop(image, i, j, h, w, (IMAGE_SIZE, IMAGE_SIZE), InterpolationMode.BILINEAR)
-        trimap = TF.resized_crop(trimap, i, j, h, w, (IMAGE_SIZE, IMAGE_SIZE), InterpolationMode.NEAREST)
+        image = TF.resized_crop(image, i, j, h, w, (image_size, image_size), InterpolationMode.BILINEAR)
+        trimap = TF.resized_crop(trimap, i, j, h, w, (image_size, image_size), InterpolationMode.NEAREST)
 
         if random.random() < 0.5:
             image = TF.hflip(image)
@@ -54,8 +54,8 @@ class TrainingImageTransforms:
 
         angle = random.uniform(-8, 8)
         translate = (
-            int(random.uniform(-0.04, 0.04) * IMAGE_SIZE),
-            int(random.uniform(-0.04, 0.04) * IMAGE_SIZE),
+            int(random.uniform(-0.04, 0.04) * image_size),
+            int(random.uniform(-0.04, 0.04) * image_size),
         )
         scale = random.uniform(0.92, 1.08)
         shear = random.uniform(-4, 4)
@@ -88,14 +88,14 @@ class TrainingImageTransforms:
 class EvaluationImageTransforms:
     def __call__(self, image, trimap=None):
         if trimap is None:
-            image = TF.resize(image, (146, 146), interpolation=InterpolationMode.BILINEAR)
-            image = TF.center_crop(image, IMAGE_SIZE)
+            image = TF.resize(image, (216, 216), interpolation=InterpolationMode.BILINEAR)
+            image = TF.center_crop(image, image_size)
             return TF.to_tensor(image)
 
-        image = TF.resize(image, (146, 146), interpolation=InterpolationMode.BILINEAR)
-        trimap = TF.resize(trimap, (146, 146), interpolation=InterpolationMode.NEAREST)
-        image = TF.center_crop(image, IMAGE_SIZE)
-        trimap = TF.center_crop(trimap, IMAGE_SIZE)
+        image = TF.resize(image, (216, 216), interpolation=InterpolationMode.BILINEAR)
+        trimap = TF.resize(trimap, (216, 216), interpolation=InterpolationMode.NEAREST)
+        image = TF.center_crop(image, image_size)
+        trimap = TF.center_crop(trimap, image_size)
         return _image_with_trimap_channel(image, trimap)
 
 

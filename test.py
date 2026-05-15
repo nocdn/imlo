@@ -10,9 +10,9 @@ from coursework_data import load_pet_split
 from model import create_pet_breed_model
 from transforms import build_evaluation_image_transforms
 
-BATCH_SIZE = int(os.environ.get("IMLO_BATCH_SIZE", "64"))
-MODEL_FILE_NAME = os.environ.get("IMLO_MODEL_FILE", "model.pth")
-NUMBER_OF_DATA_WORKERS = int(os.environ.get("IMLO_NUM_WORKERS", "4"))
+batch_size = 32
+model_file_name = os.environ.get("IMLO_MODEL_FILE", "model.pth")
+number_of_data_workers = 4
 
 
 def choose_testing_device():
@@ -47,7 +47,7 @@ def evaluate_test_set(dataloader, model, loss_fn, device):
 
 
 def main():
-    if not Path(MODEL_FILE_NAME).exists():
+    if not Path(model_file_name).exists():
         raise FileNotFoundError("Run train.py first so that model.pth exists.")
 
     device = choose_testing_device()
@@ -57,11 +57,11 @@ def main():
         "test", download=True, transform=build_evaluation_image_transforms()
     )
     test_dataloader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=NUMBER_OF_DATA_WORKERS,
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=number_of_data_workers,
     )
 
     model = create_pet_breed_model().to(device)
-    weights = torch.load(MODEL_FILE_NAME, map_location=device, weights_only=True)
+    weights = torch.load(model_file_name, map_location=device, weights_only=True)
     model.load_state_dict(weights)
 
     loss_fn = nn.CrossEntropyLoss()
@@ -78,7 +78,7 @@ def main():
         "test_loss": avg_loss,
         "test_accuracy": accuracy,
         "testing_seconds": elapsed,
-        "model_file": MODEL_FILE_NAME,
+        "model_file": model_file_name,
     }
 
 

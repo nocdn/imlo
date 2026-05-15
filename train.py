@@ -12,17 +12,18 @@ from transforms import (
     build_training_image_transforms,
 )
 
-BATCH_SIZE = int(os.environ.get("IMLO_BATCH_SIZE", "64"))
-NUMBER_OF_EPOCHS = int(os.environ.get("IMLO_EPOCHS", "30"))
-LEARNING_RATE = float(os.environ.get("IMLO_LEARNING_RATE", "0.003"))
-WEIGHT_DECAY = float(os.environ.get("IMLO_WEIGHT_DECAY", "5e-4"))
-LABEL_SMOOTHING = float(os.environ.get("IMLO_LABEL_SMOOTHING", "0.05"))
-WARMUP_EPOCHS = int(os.environ.get("IMLO_WARMUP_EPOCHS", "3"))
-MIXUP_ALPHA = float(os.environ.get("IMLO_MIXUP_ALPHA", "0.0"))
-USE_VALIDATION_SPLIT = os.environ.get("IMLO_USE_VALIDATION_SPLIT", "1") != "0"
-VALIDATION_FRACTION = float(os.environ.get("IMLO_VALIDATION_FRACTION", "0.1"))
-NUMBER_OF_DATA_WORKERS = int(os.environ.get("IMLO_NUM_WORKERS", "4"))
-MODEL_FILE_NAME = os.environ.get("IMLO_MODEL_FILE", "model.pth")
+batch_size = 32
+number_of_epochs = 30
+learning_rate = 0.002
+weight_decay = 5e-4
+label_smoothing = 0.05
+warmup_epochs = 3
+mixup_alpha = 0.0
+use_validation_split = False
+validation_fraction = 0.1
+number_of_data_workers = 4
+model_file_name = os.environ.get("IMLO_MODEL_FILE", "model.pth")
+ema_decay = 0.0
 
 
 def choose_training_device():
@@ -41,8 +42,30 @@ def mixup_batch(images, labels, alpha):
     return mixed_images, labels, labels[permutation], lam
 
 
+def create_ema_state(model):
+    return {name: value.detach().clone() for name, value in model.state_dict().items()}
+
+
+def update_ema_state(model, ema_state):
+    with torch.no_grad():
+        for name, value in model.state_dict().items():
+            if torch.is_floating_point(value):
+                ema_state[name].mul_(ema_decay).add_(
+                    value.detach(), alpha=1.0 - ema_decay
+                )
+            else:
+                ema_state[name].copy_(value)
+
+
 def train_one_epoch(
-    dataloader, model, loss_fn, optimiser, device, epoch_num, total_epochs
+    dataloader,
+    model,
+    loss_fn,
+    optimiser,
+    device,
+    epoch_num,
+    total_epochs,
+    ema_state=None,
 ):
     model.train()
     total_loss = 0
@@ -55,9 +78,9 @@ def train_one_epoch(
         images = images.to(device, non_blocking=True)
         labels = labels.to(device, non_blocking=True)
 
-        if MIXUP_ALPHA > 0:
+        if mixup_alpha > 0:
             mixed_images, labels_a, labels_b, lam = mixup_batch(
-                images, labels, MIXUP_ALPHA
+                images, labels, mixup_alpha
             )
             scores = model(mixed_images)
             loss = lam * loss_fn(scores, labels_a) + (1.0 - lam) * loss_fn(
@@ -74,6 +97,8 @@ def train_one_epoch(
         optimiser.zero_grad()
         loss.backward()
         optimiser.step()
+        if ema_state is not None:
+            update_ema_state(model, ema_state)
 
         bsz = images.shape[0]
         total_loss += loss.item() * bsz
@@ -110,7 +135,7 @@ def evaluate(dataloader, model, loss_fn, device):
 
 def make_train_val_subsets(training_dataset, evaluation_dataset):
     n = len(training_dataset)
-    n_val = int(n * VALIDATION_FRACTION)
+    n_val = int(n * validation_fraction)
     rng = torch.Generator().manual_seed(0)
     shuffled = torch.randperm(n, generator=rng).tolist()
     val_idx = shuffled[:n_val]
@@ -119,21 +144,21 @@ def make_train_val_subsets(training_dataset, evaluation_dataset):
 
 
 def build_lr_schedule(optimiser):
-    """linear warmup for WARMUP_EPOCHS, then cosine to 0 over the epochs that are left"""
+    """linear warmup for warmup_epochs, then cosine to 0 over the epochs that are left"""
     warmup = torch.optim.lr_scheduler.LinearLR(
         optimiser,
         start_factor=0.1,
         end_factor=1.0,
-        total_iters=WARMUP_EPOCHS,
+        total_iters=warmup_epochs,
     )
     cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimiser,
-        T_max=NUMBER_OF_EPOCHS - WARMUP_EPOCHS,
+        T_max=number_of_epochs - warmup_epochs,
     )
     return torch.optim.lr_scheduler.SequentialLR(
         optimiser,
         schedulers=[warmup, cosine],
-        milestones=[WARMUP_EPOCHS],
+        milestones=[warmup_epochs],
     )
 
 
@@ -150,7 +175,7 @@ def main():
         "trainval", download=True, transform=build_evaluation_image_transforms()
     )
 
-    if USE_VALIDATION_SPLIT:
+    if use_validation_split:
         training_dataset, validation_dataset = make_train_val_subsets(
             train_ds_train_tf, train_ds_eval_tf
         )
@@ -162,45 +187,48 @@ def main():
 
     training_dataloader = DataLoader(
         training_dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         shuffle=True,
-        num_workers=NUMBER_OF_DATA_WORKERS,
+        num_workers=number_of_data_workers,
         pin_memory=pin,
-        persistent_workers=NUMBER_OF_DATA_WORKERS > 0,
+        persistent_workers=number_of_data_workers > 0,
     )
     validation_dataloader = None
-    if USE_VALIDATION_SPLIT:
+    if use_validation_split:
         validation_dataloader = DataLoader(
             validation_dataset,
-            batch_size=BATCH_SIZE,
+            batch_size=batch_size,
             shuffle=False,
-            num_workers=NUMBER_OF_DATA_WORKERS,
+            num_workers=number_of_data_workers,
             pin_memory=pin,
-            persistent_workers=NUMBER_OF_DATA_WORKERS > 0,
+            persistent_workers=number_of_data_workers > 0,
         )
     full_trainval_dataloader = DataLoader(
         train_ds_eval_tf,
-        batch_size=BATCH_SIZE,
+        batch_size=batch_size,
         shuffle=False,
-        num_workers=NUMBER_OF_DATA_WORKERS,
+        num_workers=number_of_data_workers,
         pin_memory=pin,
-        persistent_workers=NUMBER_OF_DATA_WORKERS > 0,
+        persistent_workers=number_of_data_workers > 0,
     )
 
     print(
         "train images:",
         len(training_dataset),
         "val images:",
-        len(validation_dataset) if USE_VALIDATION_SPLIT else 0,
+        len(validation_dataset) if use_validation_split else 0,
     )
 
     model = create_pet_breed_model().to(device)
     n_params = sum(p.numel() for p in model.parameters())
     print("model params:", n_params)
+    ema_state = create_ema_state(model) if ema_decay > 0 else None
+    if ema_state is not None:
+        print("ema decay:", ema_decay)
 
-    loss_fn = nn.CrossEntropyLoss(label_smoothing=LABEL_SMOOTHING)
+    loss_fn = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
     optimiser = torch.optim.AdamW(
-        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+        model.parameters(), lr=learning_rate, weight_decay=weight_decay
     )
     scheduler = build_lr_schedule(optimiser)
 
@@ -208,7 +236,7 @@ def main():
     best_val_epoch = 0
     t_start = time.time()
 
-    for epoch in range(NUMBER_OF_EPOCHS):
+    for epoch in range(number_of_epochs):
         t0 = time.time()
         train_loss, train_acc = train_one_epoch(
             training_dataloader,
@@ -217,21 +245,22 @@ def main():
             optimiser,
             device,
             epoch + 1,
-            NUMBER_OF_EPOCHS,
+            number_of_epochs,
+            ema_state,
         )
         scheduler.step()
         secs = time.time() - t0
 
-        if USE_VALIDATION_SPLIT:
+        if use_validation_split:
             val_loss, val_acc = evaluate(validation_dataloader, model, loss_fn, device)
             saved = ""
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 best_val_epoch = epoch + 1
-                torch.save(model.state_dict(), MODEL_FILE_NAME)
+                torch.save(model.state_dict(), model_file_name)
                 saved = " *"
             print(
-                f"E{epoch + 1:02d}/{NUMBER_OF_EPOCHS} "
+                f"E{epoch + 1:02d}/{number_of_epochs} "
                 f"loss {train_loss:.3f} acc {train_acc * 100:.1f}% "
                 f"| val loss {val_loss:.3f} acc {val_acc * 100:.1f}% "
                 f"| {secs:.1f}s{saved}",
@@ -239,35 +268,38 @@ def main():
             )
         else:
             print(
-                f"E{epoch + 1:02d}/{NUMBER_OF_EPOCHS} "
+                f"E{epoch + 1:02d}/{number_of_epochs} "
                 f"loss {train_loss:.3f} acc {train_acc * 100:.1f}% | {secs:.1f}s",
                 flush=True,
             )
 
     total_secs = time.time() - t_start
 
-    if USE_VALIDATION_SPLIT:
-        weights = torch.load(MODEL_FILE_NAME, map_location=device, weights_only=True)
+    if use_validation_split:
+        weights = torch.load(model_file_name, map_location=device, weights_only=True)
         model.load_state_dict(weights)
+    elif ema_state is not None:
+        model.load_state_dict(ema_state)
+        torch.save(model.state_dict(), model_file_name)
     else:
-        torch.save(model.state_dict(), MODEL_FILE_NAME)
+        torch.save(model.state_dict(), model_file_name)
 
     final_loss, final_acc = evaluate(full_trainval_dataloader, model, loss_fn, device)
-    print(f"Final trainval loss: {final_loss:.4f}")
-    print(f"Final trainval accuracy: {final_acc * 100:.2f} %")
-    if USE_VALIDATION_SPLIT:
-        print(f"Best validation epoch: {best_val_epoch}")
-        print(f"Best validation accuracy: {best_val_acc * 100:.2f} %")
-    print(f"Total training time: {total_secs:.1f}s")
-    print("Saved model to", MODEL_FILE_NAME)
+    print(f"final trainval loss: {final_loss:.4f}")
+    print(f"final trainval accuracy: {final_acc * 100:.2f} %")
+    if use_validation_split:
+        print(f"best validation epoch: {best_val_epoch}")
+        print(f"best validation accuracy: {best_val_acc * 100:.2f} %")
+    print(f"total training time: {total_secs:.1f}s")
+    print("saved model to", model_file_name)
 
     return {
         "trainval_loss": final_loss,
         "trainval_accuracy": final_acc,
-        "best_validation_epoch": best_val_epoch if USE_VALIDATION_SPLIT else None,
-        "best_validation_accuracy": best_val_acc if USE_VALIDATION_SPLIT else None,
+        "best_validation_epoch": best_val_epoch if use_validation_split else None,
+        "best_validation_accuracy": best_val_acc if use_validation_split else None,
         "training_seconds": total_secs,
-        "model_file": MODEL_FILE_NAME,
+        "model_file": model_file_name,
     }
 
 

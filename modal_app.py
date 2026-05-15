@@ -3,14 +3,14 @@ from pathlib import Path
 
 import modal
 
-APP_NAME = "imlo-coursework"
-VOLUME_NAME = "imlo-coursework"
-VOLUME_MOUNT_PATH = Path("/mnt/imlo")
-REMOTE_DATA_DIR = VOLUME_MOUNT_PATH / "data"
-REMOTE_MODEL_FILE = VOLUME_MOUNT_PATH / "model.pth"
+app_name = "imlo-coursework"
+volume_name = "imlo-coursework"
+volume_mount_path = Path("/mnt/imlo")
+remote_data_dir = volume_mount_path / "data"
+remote_model_file = volume_mount_path / "model.pth"
 
-app = modal.App(APP_NAME)
-volume = modal.Volume.from_name(VOLUME_NAME, create_if_missing=True)
+app = modal.App(app_name)
+volume = modal.Volume.from_name(volume_name, create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
@@ -25,14 +25,11 @@ image = (
     cpu=4.0,
     memory=32768,
     timeout=6 * 60 * 60,
-    volumes={VOLUME_MOUNT_PATH: volume},
+    volumes={volume_mount_path: volume},
 )
 def train_and_test_on_modal():
-    os.environ["IMLO_DATA_DIR"] = str(REMOTE_DATA_DIR)
-    os.environ["IMLO_MODEL_FILE"] = str(REMOTE_MODEL_FILE)
-    os.environ["IMLO_NUM_WORKERS"] = "4"
-    os.environ["IMLO_USE_VALIDATION_SPLIT"] = "0"
-    os.environ["IMLO_USE_TRIMAP_INPUT"] = "1"
+    os.environ["IMLO_DATA_DIR"] = str(remote_data_dir)
+    os.environ["IMLO_MODEL_FILE"] = str(remote_model_file)
 
     import torch
 
@@ -44,8 +41,8 @@ def train_and_test_on_modal():
     if torch.cuda.is_available():
         print("  gpu:", torch.cuda.get_device_name(0))
 
-    if REMOTE_MODEL_FILE.exists():
-        REMOTE_MODEL_FILE.unlink()
+    if remote_model_file.exists():
+        remote_model_file.unlink()
 
     train_results = train.main()
     volume.commit()
@@ -56,7 +53,7 @@ def train_and_test_on_modal():
     return {
         "train": train_results,
         "test": test_results,
-        "model_file": str(REMOTE_MODEL_FILE),
+        "model_file": str(remote_model_file),
     }
 
 
@@ -67,12 +64,12 @@ def main():
     train_results = results["train"]
     test_results = results["test"]
 
-    print("\nModal run complete")
-    print(f"Model file: {results['model_file']}")
-    print(f"Trainval accuracy: {train_results['trainval_accuracy'] * 100:.2f} %")
+    print("\nmodal run complete")
+    print(f"model file: {results['model_file']}")
+    print(f"trainval accuracy: {train_results['trainval_accuracy'] * 100:.2f} %")
     if train_results["best_validation_accuracy"] is not None:
-        print(f"Best validation epoch: {train_results['best_validation_epoch']}")
+        print(f"best validation epoch: {train_results['best_validation_epoch']}")
         print(
-            f"Best validation accuracy: {train_results['best_validation_accuracy'] * 100:.2f} %"
+            f"best validation accuracy: {train_results['best_validation_accuracy'] * 100:.2f} %"
         )
-    print(f"Test accuracy: {test_results['test_accuracy'] * 100:.2f} %")
+    print(f"test accuracy: {test_results['test_accuracy'] * 100:.2f} %")
